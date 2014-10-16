@@ -3,9 +3,10 @@
 import sys
 import ROOT as r
 
-tf = r.TFile(sys.argv[1])
+photonsTree= r.TChain('ProducedPhotons')
 
-photonsTree = tf.Get('ProducedPhotons')
+for f in sys.argv[1:]:
+  photonsTree.AddFile(f)
 
 pho_yield=8.
 
