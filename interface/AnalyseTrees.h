@@ -15,6 +15,15 @@ struct Event {
   int runId;
   int eventId;
   int nphos;
+  int ndetphos;
+  double fibre_diam;
+  double fibre_length;
+};
+
+struct File {
+  TString fileName;
+  double fibre_diam;
+  double fibre_length;
 };
 
 class AnalyseTrees {
@@ -24,7 +33,7 @@ class AnalyseTrees {
     AnalyseTrees();
     ~AnalyseTrees();
 
-    void addFile(TString fileName);
+    void addFile(TString fileName, double f_diam, double f_length);
     void run();
     void printEventInfo();
     void init(TString outFileName, TString outTreeName);
@@ -33,13 +42,12 @@ class AnalyseTrees {
 
   private:
 
-    std::vector<TString> fileNames;
+    std::vector<File> files;
     std::map<int,Event> eventInfo;
     void setBranches(TTree* tree);
     void setOutputBranches();
     TFile *outFile;
     TTree *outTree;
-    std::map<TString,TH1F*> hists;
 
     int maxId;
 
@@ -51,7 +59,10 @@ class AnalyseTrees {
     int fileId;
     int myEvId;
     int nphos;
+    int ndetphos;
     double e_depos;
+    double fibre_diam;
+    double fibre_length;
 
 };
 

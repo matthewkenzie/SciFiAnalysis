@@ -11,8 +11,13 @@ AnalyseTrees::~AnalyseTrees(){
 
 }
 
-void AnalyseTrees::addFile(TString fileName){
-  fileNames.push_back(fileName);
+void AnalyseTrees::addFile(TString fileName, double f_diam, double f_length){
+
+  File file;
+  file.fileName = fileName;
+  file.fibre_diam = f_diam;
+  file.fibre_length = f_length;
+  files.push_back(file);
 }
 
 void AnalyseTrees::init(TString outFileName, TString outTreeName){
@@ -22,9 +27,6 @@ void AnalyseTrees::init(TString outFileName, TString outTreeName){
 
   setOutputBranches();
 
-  hists["nphos"] = new TH1F("nphos","",100,0,4000);
-  hists["e_depos"] = new TH1F("e_depos","",100,0,500);
-
 }
 
 void AnalyseTrees::setOutputBranches(){
@@ -33,8 +35,11 @@ void AnalyseTrees::setOutputBranches(){
   outTree->Branch("fileId",&fileId);
   outTree->Branch("runId",&runId);
   outTree->Branch("eventId",&eventId);
+  outTree->Branch("fibre_diam",&fibre_diam);
+  outTree->Branch("fibre_length",&fibre_length);
   outTree->Branch("nphos",&nphos);
   outTree->Branch("e_depos",&e_depos);
+  outTree->Branch("ndetphos",&ndetphos);
 
 }
 
@@ -47,16 +52,16 @@ void AnalyseTrees::fill(){
     runId = eventInfo[ev].runId;
     eventId = eventInfo[ev].eventId;
     nphos = eventInfo[ev].nphos;
+    ndetphos = eventInfo[ev].ndetphos;
+    fibre_diam = eventInfo[ev].fibre_diam;
+    fibre_length = eventInfo[ev].fibre_length;
     e_depos = double(eventInfo[ev].nphos)/pho_yield;
 
-    if (eventId==0) {
-      cout << myEvId << ": " << " f: " << fileId << " r: " << runId << " e: " << eventId << " nphos: " << nphos << endl;
-    }
+    //if (eventId==0) {
+      //cout << myEvId << ": " << " f: " << fileId << " r: " << runId << " e: " << eventId << " nphos: " << nphos << endl;
+    //}
 
     outTree->Fill();
-
-    hists["nphos"]->Fill(eventInfo[ev].nphos);
-    hists["e_depos"]->Fill(eventInfo[ev].nphos/pho_yield);
   }
 
 }
@@ -65,9 +70,6 @@ void AnalyseTrees::save(){
 
   outFile->cd();
   outTree->Write();
-  for (map<TString,TH1F*>::iterator it=hists.begin(); it!=hists.end(); it++){
-    it->second->Write();
-  }
   outFile->Close();
   delete outFile;
 }
@@ -80,8 +82,8 @@ void AnalyseTrees::setBranches(TTree *tree){
 
 void AnalyseTrees::run(){
 
-  for (unsigned int f=0; f<fileNames.size(); f++){
-    TFile *tf = TFile::Open(fileNames[f]);
+  for (unsigned int f=0; f<files.size(); f++){
+    TFile *tf = TFile::Open(files[f].fileName);
     TTree *tree = (TTree*)tf->Get("ProducedPhotons");
     cout << "Opened file: " << tf->GetName() << endl;
 
@@ -102,7 +104,10 @@ void AnalyseTrees::run(){
         event.fileId = f;
         event.runId = r;
         event.eventId = e;
+        event.fibre_diam = files[f].fibre_diam;
+        event.fibre_length = files[f].fibre_length;
         event.nphos = 0;
+        event.ndetphos = 0;
 
         myEvId = evCache + r*(eventsPerRun) + e;
 
@@ -125,6 +130,22 @@ void AnalyseTrees::run(){
 
     }
     delete tree;
+
+    TTree *detTree = (TTree*)tf->Get("DetectedPhotons");
+    setBranches(detTree);
+    for (int jentry=0; jentry<detTree->GetEntries(); jentry++){
+      detTree->GetEntry(jentry);
+
+      myEvId = evCache + runId*(eventsPerRun) + eventId;
+
+      if (jentry%25000==0) {
+        cout << "Entry " << jentry << " / " << detTree->GetEntriesFast() << endl;
+      }
+
+      eventInfo[myEvId].ndetphos += 1;
+    }
+    delete detTree;
+
     tf->Close();
     delete tf;
   }
